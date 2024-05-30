@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 require("dotenv").config();
 const cors = require("cors");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET);
 const port = process.env.PORT || 3000;
 
 // Middleware
@@ -122,7 +123,7 @@ async function run() {
       res.send(result);
     });
 
-    // Cart api routes !------------------**##**------------------------!
+    // Payment api routes !------------------**##**------------------------!
     app.post("/add-to-cart", async (req, res) => {
       const newCartItem = req.body;
       const result = await cartCollection.insertOne(newCartItem);
@@ -165,6 +166,93 @@ async function run() {
       const query = { classId: id };
       const result = await cartCollection.deleteOne(query);
       res.send(result);
+    });
+
+    // STRIPE PAYMENT Routes
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price) * 100;
+
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_mathod_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    // Get payment information
+    app.post("/payment-info", async (req, res) => {
+      const paymentInfo = req.body;
+      const classesId = paymentInfo.classId;
+      const userEmail = paymentInfo.userEmail;
+      const singleClassId = req.query.classId;
+      let query;
+      if (singleClassId) {
+        query = { classesId: singleClassId, userMail: userEmail };
+      } else {
+        query = { classesId: { $in: classesId } };
+      }
+
+      const classesQuery = {
+        _id: { $in: classesId.map((id) => new ObjectId(id)) },
+      };
+      const classes = await classesCollection.find(classesQuery).toArray();
+      const newEnrolledData = {
+        userEmail: userEmail,
+        classId: singleClassId.map((id) => new ObjectId(id)),
+        transactionId: paymentInfo.transactionId,
+      };
+
+      const updateDoc = {
+        $set: {
+          totalEnrolled:
+            classes.reduce(
+              (total, current) => total + current.totalEnrolled,
+              0
+            ) + 1 || 0,
+          availableSeats:
+            classes.reduce(
+              (total, current) => total + current.availableSeats,
+              0
+            ) - 1 || 0,
+        },
+      };
+
+      const updatedResult = await classesCollection.updateMany(
+        classesQuery,
+        updateDoc,
+        { upsert: true }
+      );
+      const enrolledResult = await classesCollection.insertOne(newEnrolledData);
+      const deletedResult = await cartCollection.deleteMany(query);
+      const paymentResult = await paymentCollection.insertOne(paymentInfo);
+
+      res.send({ paymentResult, deletedResult, enrolledResult, updatedResult });
+    });
+
+    // Get payment history
+    app.get("/payment-history/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { userEmail: email };
+      const result = await paymentCollection
+        .find(query)
+        .sort({ date: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    // Get payment history length
+    app.get("/payment-history-length/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { userEmail: email };
+      const total = await paymentCollection.countDocuments(query);
+      res.send({ total });
     });
 
     // Send a ping to confirm a successful connection
