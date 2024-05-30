@@ -123,7 +123,7 @@ async function run() {
       res.send(result);
     });
 
-    // Payment api routes !------------------**##**------------------------!
+    // Cart and Payment api routes !------------------**##**------------------------!
     app.post("/add-to-cart", async (req, res) => {
       const newCartItem = req.body;
       const result = await cartCollection.insertOne(newCartItem);
@@ -253,6 +253,54 @@ async function run() {
       const query = { userEmail: email };
       const total = await paymentCollection.countDocuments(query);
       res.send({ total });
+    });
+
+    // Enrollment api routes !------------------**##**------------------------!
+    app.get("/popular_classes", async (req, res) => {
+      const result = await classesCollection
+        .find()
+        .sort({ totalEnrolled: -1 })
+        .limit(6)
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/popular_instructors", async (req, res) => {
+      const pipeline = [
+        {
+          $group: {
+            _id: "$instructorEmail",
+            totalEnrolled: { $sum: "$totalEnrolled" },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "email",
+            as: "instructor",
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            instructor: {
+              $arrayElement: ["$instructor", 0],
+            },
+            totalEnrolled: 1,
+          },
+        },
+        {
+          $sort: {
+            totalEnrolled: -1,
+          },
+        },
+        {
+          $limit: 6,
+        },
+      ];
+      const result = await classesCollection.aggregate(pipeline).toArray();
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
