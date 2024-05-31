@@ -3,11 +3,28 @@ const app = express();
 require("dotenv").config();
 const cors = require("cors");
 const stripe = require("stripe")(process.env.PAYMENT_SECRET);
+var jwt = require("jsonwebtoken");
 const port = process.env.PORT || 3000;
 
-// Middleware
+// Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Token verification function middleware
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ message: "Access token not found" });
+  }
+  const token = authorization?.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Invalid authorization" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
 // MongoDB Connection
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -38,6 +55,15 @@ async function run() {
 
     // User api routes !------------------**##**------------------------!
 
+    // User token generator
+    app.post("/api/set-token", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_SECRET, {
+        expiresIn: "24h",
+      });
+      res.send({ token });
+    });
+
     // Create new user
     app.post("/new-user", async (req, res) => {
       const newUser = req.body;
@@ -60,7 +86,7 @@ async function run() {
     });
 
     // Get user data by email
-    app.get("/user/:email", async (req, res) => {
+    app.get("/user/:email", verifyJWT, async (req, res) => {
       const email = body.params.email;
       const query = { email: email };
       const result = await usersCollection.findOne(query);
@@ -68,7 +94,7 @@ async function run() {
     });
 
     // Delete a user by id
-    app.delete("/delete-users/:id", async (req, res) => {
+    app.delete("/delete-users/:id", verifyJWT, async (req, res) => {
       const id = body.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOneOne(query);
