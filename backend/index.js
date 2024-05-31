@@ -168,8 +168,7 @@ async function run() {
       res.send(result);
     });
 
-    // STRIPE PAYMENT Routes
-
+    // STRIPE payment Routes
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price) * 100;
@@ -256,6 +255,8 @@ async function run() {
     });
 
     // Enrollment api routes !------------------**##**------------------------!
+
+    // Get Popular classes
     app.get("/popular_classes", async (req, res) => {
       const result = await classesCollection
         .find()
@@ -265,6 +266,7 @@ async function run() {
       res.send(result);
     });
 
+    // Get Popular instructors
     app.get("/popular_instructors", async (req, res) => {
       const pipeline = [
         {
@@ -300,6 +302,87 @@ async function run() {
         },
       ];
       const result = await classesCollection.aggregate(pipeline).toArray();
+      res.send(result);
+    });
+
+    // Admin api routes !------------------**##**------------------------!
+
+    // Admin status routes
+    app.get("/admin-stats", async (req, res) => {
+      const approvedClasses = (
+        await classesCollection.find({ status: "approved" })
+      ).toArray().length;
+      const pendingClasses = (
+        await classesCollection.find({ status: "pending" })
+      ).toArray().length;
+      const instructor = (
+        await usersCollection.find({ role: "instructor" })
+      ).toArray().length;
+      const totalClasses = (await classesCollection.find()).toArray().length;
+      const totalEnrolled = (await enrolledCollection.find().toArray()).length;
+
+      const result = {
+        approvedClasses,
+        pendingClasses,
+        instructor,
+        totalClasses,
+        totalEnrolled,
+      };
+      res.send(result);
+    });
+
+    // Get all instructor
+    app.get("/enrolled-classes/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { userEmail: email };
+      const pipeline = [
+        {
+          $match: query,
+        },
+        {
+          $lookup: {
+            from: "classes",
+            localField: "classesId",
+            foreignField: "_id",
+            as: "classes",
+          },
+        },
+        {
+          $unwind: "classes",
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "classes.instructorEmail",
+            foreignField: "email",
+            as: "instructor",
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            instructor: {
+              $arrayElement: ["instructor", 0],
+            },
+            classes: 1,
+          },
+        },
+      ];
+
+      const result = await enrolledCollection.aggregate(pipeline).toArray();
+      res.send(result);
+    });
+
+    // Application for instructor
+    app.post("/as-instructor", async (req, res) => {
+      const data = req.body;
+      const result = await appliedCollection.insertOne(data);
+      res.send(result);
+    });
+
+    app.get("/applied-instructors/:email", async (req, res) => {
+      const email = email.params.email;
+      const result = await appliedCollection.findOne({ email });
       res.send(result);
     });
 
