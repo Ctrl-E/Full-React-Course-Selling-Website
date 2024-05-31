@@ -36,7 +36,71 @@ async function run() {
     const enrolledCollection = database.collection("enrolled");
     const appliedCollection = database.collection("applied");
 
-    // classes api routes !------------------**##**------------------------!
+    // User api routes !------------------**##**------------------------!
+
+    // Create new user
+    app.post("/new-user", async (req, res) => {
+      const newUser = req.body;
+      const result = await usersCollection.insertOne(newUser);
+      res.send(result);
+    });
+
+    // Get users data
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    // Get user data by id
+    app.get("/users/:id", async (req, res) => {
+      const id = body.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+
+    // Get user data by email
+    app.get("/user/:email", async (req, res) => {
+      const email = body.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+
+    // Delete a user by id
+    app.delete("/delete-users/:id", async (req, res) => {
+      const id = body.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOneOne(query);
+      res.send(result);
+    });
+
+    // Update a user by id
+    app.put("/update-users/:id", async (req, res) => {
+      const id = body.params.id;
+      const updatedUser = req.body;
+      const filter = { _id: newObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          name: updatedUser.name,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          address: updatedUser.address,
+          about: updatedUser.about,
+          photoUrl: updatedUser.photoUrl,
+          skills: updatedUser.skills ? updatedUser.skills : null,
+        },
+      };
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    // Classes api routes !------------------**##**------------------------!
     app.post("/new-class", async (req, res) => {
       const newClass = req.body;
       const result = await classesCollection.insertOne(newClass);
