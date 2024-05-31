@@ -64,6 +64,29 @@ async function run() {
       res.send({ token });
     });
 
+    // Middleware for admin and instructor
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user.role === "admin") {
+        next();
+      } else {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+    };
+
+    const verifyInstructor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user.role === "instructor") {
+        next();
+      } else {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+    };
+
     // Create new user
     app.post("/new-user", async (req, res) => {
       const newUser = req.body;
@@ -94,15 +117,20 @@ async function run() {
     });
 
     // Delete a user by id
-    app.delete("/delete-users/:id", verifyJWT, async (req, res) => {
-      const id = body.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await usersCollection.deleteOneOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/delete-users/:id",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const id = body.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await usersCollection.deleteOneOne(query);
+        res.send(result);
+      }
+    );
 
     // Update a user by id
-    app.put("/update-users/:id", async (req, res) => {
+    app.put("/update-users/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = body.params.id;
       const updatedUser = req.body;
       const filter = { _id: newObjectId(id) };
@@ -127,7 +155,7 @@ async function run() {
     });
 
     // Classes api routes !------------------**##**------------------------!
-    app.post("/new-class", async (req, res) => {
+    app.post("/new-class", verifyJWT, verifyInstructor, async (req, res) => {
       const newClass = req.body;
       const result = await classesCollection.insertOne(newClass);
       res.send(result);
@@ -155,12 +183,17 @@ async function run() {
     });
 
     // Query for classes by instructor by email
-    app.get("/classes/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { instructorEmail: email };
-      const result = await classesCollection.findOne(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/classes/:email",
+      verifyJWT,
+      verifyInstructor,
+      async (req, res) => {
+        const email = req.params.email;
+        const query = { instructorEmail: email };
+        const result = await classesCollection.findOne(query).toArray();
+        res.send(result);
+      }
+    );
 
     // Query for classes manage
     app.get("/classes-manage", async (req, res) => {
@@ -169,59 +202,69 @@ async function run() {
     });
 
     // Update classes status and reason
-    app.patch("/change-status/:id", async (req, res) => {
-      const id = req.params.id;
-      const status = req.body.status;
-      const reason = req.body.reason;
-      const filter = { _id: new ObjectId(id) };
-      const options = { upsert: true };
-      const updateDoc = {
-        $set: {
-          status: status,
-          reason: reason,
-        },
-      };
-      const result = await classesCollection.updateOne(
-        filter,
-        updateDoc,
-        options
-      );
-      res.json(result);
-    });
+    app.patch(
+      "/change-status/:id",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const status = req.body.status;
+        const reason = req.body.reason;
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            status: status,
+            reason: reason,
+          },
+        };
+        const result = await classesCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.json(result);
+      }
+    );
 
     // Update all class information
-    app.put("/update-class/:id", async (req, res) => {
-      const id = req.params.id;
-      const updateClass = req.body;
-      const filter = { _id: new ObjectId(id) };
-      const options = { upsert: true };
-      const updateDoc = {
-        $set: {
-          name: updateClass.name,
-          description: updateClass.description,
-          price: updateClass.price,
-          availableSeats: parseInt(updateClass.availableSeats),
-          videoLink: updateClass.videoLink,
-          status: "pending",
-        },
-      };
-      const result = await classesCollection.updateOne(
-        filter,
-        updateDoc,
-        options
-      );
-      res.send(result);
-    });
+    app.put(
+      "/update-class/:id",
+      verifyJWT,
+      verifyInstructor,
+      async (req, res) => {
+        const id = req.params.id;
+        const updateClass = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            name: updateClass.name,
+            description: updateClass.description,
+            price: updateClass.price,
+            availableSeats: parseInt(updateClass.availableSeats),
+            videoLink: updateClass.videoLink,
+            status: "pending",
+          },
+        };
+        const result = await classesCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send(result);
+      }
+    );
 
     // Cart and Payment api routes !------------------**##**------------------------!
-    app.post("/add-to-cart", async (req, res) => {
+    app.post("/add-to-cart", verifyJWT, async (req, res) => {
       const newCartItem = req.body;
       const result = await cartCollection.insertOne(newCartItem);
       res.send(result);
     });
 
     // Get cart item by id
-    app.get("/cart-item/:id", async (req, res) => {
+    app.get("/cart-item/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const email = req.body.email;
       const query = {
@@ -237,7 +280,7 @@ async function run() {
     });
 
     // Get cart info by user email
-    app.get("/cart/:email", async (req, res) => {
+    app.get("/cart/:email", verifyJWT, async (req, res) => {
       const email = req.body;
       const query = { userMail: email };
       const projection = { classId: 1 };
@@ -251,7 +294,7 @@ async function run() {
     });
 
     // Delete cart item
-    app.delete("/delete-cart-item/:id", async (req, res) => {
+    app.delete("/delete-cart-item/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = { classId: id };
       const result = await cartCollection.deleteOne(query);
@@ -259,7 +302,7 @@ async function run() {
     });
 
     // STRIPE payment Routes
-    app.post("/create-payment-intent", async (req, res) => {
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price) * 100;
 
@@ -398,7 +441,7 @@ async function run() {
     // Admin api routes !------------------**##**------------------------!
 
     // Admin status routes
-    app.get("/admin-stats", async (req, res) => {
+    app.get("/admin-stats", verifyJWT, verifyAdmin, async (req, res) => {
       const approvedClasses = (
         await classesCollection.find({ status: "approved" })
       ).toArray().length;
@@ -422,7 +465,7 @@ async function run() {
     });
 
     // Get all instructor
-    app.get("/enrolled-classes/:email", async (req, res) => {
+    app.get("/enrolled-classes/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = { userEmail: email };
       const pipeline = [
