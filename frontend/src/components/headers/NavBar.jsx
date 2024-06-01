@@ -11,7 +11,7 @@ export const NavBar = () => {
   return (
     <nav>
       <div className="lg:w-[95%] mx-auto sm:px-6 lg:px-6">
-        <div className="px-4 py-4 flex items-center justify-center">
+        <div className="px-4 py-4 flex items-center justify-between">
           {/*Logo*/}
           <div>
             <h1 className="text-2xl inline-flex gap-3 items-center font-bold">
@@ -47,6 +47,27 @@ export const NavBar = () => {
                     </NavLink>
                   </li>
                 ))}
+                {/*Based on users*/}
+                <li>
+                  <NavLink
+                    to="/login"
+                    className={({ isActive }) =>
+                      `font-bold ${
+                        isActive
+                          ? "text-secondary"
+                          : `${
+                              navBg.includes("bg-transparent")
+                                ? "text-white"
+                                : "text-black dark:text-white"
+                            }`
+                      } hover:text-secondary duration-300`
+                    }
+                  >
+                    Login
+                  </NavLink>
+                </li>
+                {/*Color toggle*/}
+                <li>Light / Dark</li>
               </ul>
             </div>
           </div>
