@@ -3,7 +3,7 @@ import { NavBar } from "../components/headers/NavBar";
 
 export const MainLayout = () => {
   return (
-    <main className="red:bg-black overflow-hidden">
+    <main className="dark:bg-black overflow-hidden">
       <NavBar />
       <Outlet />
       <footer>Footer</footer>
