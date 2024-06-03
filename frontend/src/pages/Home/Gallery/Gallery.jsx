@@ -1,5 +1,8 @@
 import image1 from "../../../assets/gallery/image1.png";
 import image2 from "../../../assets/gallery/image2.png";
+import image3 from "../../../assets/gallery/image3.png";
+import image4 from "../../../assets/gallery/image4.png";
+import image5 from "../../../assets/gallery/image5.png";
 
 export const Gallery = () => {
   return (
@@ -22,13 +25,13 @@ export const Gallery = () => {
             <img src={image2} alt="" className="md:h-[350px] rounded-sm" />
           </div>
           <div>
-            <img src={image2} alt="" className="md:h-[350px] rounded-sm" />
+            <img src={image3} alt="" className="md:h-[350px] rounded-sm" />
           </div>
           <div>
-            <img src={image2} alt="" className="md:h-[350px] rounded-sm" />
+            <img src={image4} alt="" className="md:h-[350px] rounded-sm" />
           </div>
           <div>
-            <img src={image2} alt="" className="md:h-[350px] rounded-sm" />
+            <img src={image5} alt="" className="md:h-[350px] rounded-sm" />
           </div>
         </div>
       </div>
