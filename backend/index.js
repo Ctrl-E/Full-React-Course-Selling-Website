@@ -417,10 +417,15 @@ async function run() {
           },
         },
         {
+          $match: {
+            "instructor.role": "instructor",
+          },
+        },
+        {
           $project: {
             _id: 0,
             instructor: {
-              $arrayElement: ["$instructor", 0],
+              $arrayElemAt: ["$instructor", 0],
             },
             totalEnrolled: 1,
           },
@@ -495,7 +500,7 @@ async function run() {
           $project: {
             _id: 0,
             instructor: {
-              $arrayElement: ["instructor", 0],
+              $arrayElemAt: ["instructor", 0],
             },
             classes: 1,
           },
